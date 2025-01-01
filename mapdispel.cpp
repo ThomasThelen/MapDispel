@@ -146,7 +146,7 @@ void MapDispel::GetMapInfo()
                 if (mapStatus == "official") {
                     mapRowItem->setForeground(QBrush(QColor(0, 128, 0)));
                 } else if (mapStatus == "unknown") {
-                    mapRowItem->setForeground(QBrush(QColor(255, 68, 51)));
+                    mapRowItem->setForeground(QBrush(QColor(255, 165, 0)));
                 } else if (mapStatus == "cheat") {
                     mapRowItem->setForeground(QBrush(QColor(136, 8, 8)));
                 }
