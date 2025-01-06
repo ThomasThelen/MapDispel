@@ -17,14 +17,39 @@ MapDispel::~MapDispel()
     delete ui;
 }
 
+/**
+ * @brief getSelectedDirectory Opens a file dialog where the Warcraft III maps folder is selected
+ * @return The directory path to the maps folder
+ */
+QString getSelectedDirectory() {
+    return QFileDialog::getExistingDirectory(nullptr, "Map Directory", "MapDispel");
+}
+
+/**
+ * @brief MapDispel::on_openMapDirectory_clicked Opens the directory selection dialog and returns the selected directory.
+ */
 void MapDispel::on_openMapDirectory_clicked()
 {
-    ui->mapTable->setRowCount(0);
-    QString dirName = QFileDialog::getExistingDirectory(nullptr, "Map Directory", "123");
-    ui->directoryName->setText(dirName);
-    QDir mapDir = QDir(dirName);
-    QFileInfoList mapEntries = mapDir.entryInfoList(QStringList() << "*.w3x", QDir::Files);
+    this->mapDirectoryName = getSelectedDirectory();
+    if(!this->mapDirectoryName.length()) {
+        return;
+    }
+    populateTable();
+}
 
+/**
+ * @brief MapDispel::populateTable Clears the map table and re-populates it with detected maps
+ */
+void MapDispel::populateTable(){
+    QDir mapDir = QDir(this->mapDirectoryName);
+    QFileInfoList mapEntries = mapDir.entryInfoList(QStringList() << "*.w3x", QDir::Files);
+    if(!mapEntries.length()) {
+        QMessageBox::warning(nullptr, "Warning", "No Warcraft III maps detected. Try another directory.");
+        return;
+    }
+    ui->directoryName->setText(this->mapDirectoryName);
+    ui->mapTable->setRowCount(0);
+    this->mapHashes.clear();
     for (const QFileInfo &mapFile: mapEntries) {
         filePathMap.insert(mapFile.fileName(), mapFile.absoluteFilePath());
         ui->mapTable->insertRow(ui->mapTable->rowCount());
@@ -38,47 +63,55 @@ void MapDispel::on_openMapDirectory_clicked()
         layout->setAlignment(Qt::AlignCenter);
         layout->setContentsMargins(0, 0, 0, 0);
         ui->mapTable->setCellWidget(ui->mapTable->rowCount()-1,2, checkBoxWidget);
-        ComputeMD5(mapFile.absoluteFilePath());
+        computeMD5(mapFile.absoluteFilePath());
     }
-
 }
 
-QString MapDispel::ComputeMD5(QString filePath) {
+/**
+ * @brief MapDispel::computeMD5 Computes the MD5 of a map
+ * @param filePath Path to the file whose md5 is being computed
+ */
+void MapDispel::computeMD5(QString filePath) {
     QCryptographicHash crypto(QCryptographicHash::Md5);
     QFile file(filePath);
-    qDebug() << "Hashing File...";
-    qDebug() << file.fileName();
     file.open(QFile::ReadOnly);
     while(!file.atEnd()){
         crypto.addData(file.read(4096));
     }
     auto hash = QString(crypto.result().toHex()).toStdString();
-    qDebug() << hash;
     this->mapHashes.push_back(hash);
     file.close();
-    return QString("");
 }
 
+/**
+ * @brief MapDispel::on_pushButton_clicked Called when the "Check Maps" button is clicked
+ */
 void MapDispel::on_pushButton_clicked()
 {
-    this->GetMapInfo();
+    this->getMapInfo();
 }
 
-void MapDispel::DeleteFile(const QString &fileName) {
-    QFile file(fileName);
-
-    if (file.exists()) {
-        if (!file.remove()) {
-            // File successfully deleted
-            QMessageBox::warning(nullptr, "Error", "Failed to delete the file.");
+/**
+ * @brief MapDispel::deleteFiles Deletes files
+ * @param fileNames Vector of fully qualified paths to files for deletion
+ */
+void MapDispel::deleteFiles(const std::vector<QString> &fileNames) {
+    for (const QString& filename: fileNames) {
+        QFile file(filename);
+        if (file.exists()) {
+            if (!file.remove()) {
+                QMessageBox::warning(nullptr, "Error", "Failed to delete the file.");
+            }
         }
     }
 }
 
 /**
- * @brief MapDispel::checkSelectedCheckBoxes
+ * @brief MapDispel::getMapsForDeletion Gets the maps selected for deletion from the map table
+ * @return A vector of map names that have been selected for deletion
  */
-void MapDispel::checkSelectedCheckBoxes() {
+std::vector<QString> MapDispel::getMapsForDeletion() {
+    std::vector<QString> deletePaths;
     for (int row = 0; row < ui->mapTable->rowCount(); ++row) {
         QWidget *checkBoxWidget = ui->mapTable->cellWidget(row, 2);
         if (checkBoxWidget) {
@@ -88,19 +121,19 @@ void MapDispel::checkSelectedCheckBoxes() {
                 QString filename = ui->mapTable->item(row, 0)->text();
 
                 if (isChecked) {
-                    auto fullPath = this->filePathMap.value(filename);
-                    DeleteFile(fullPath);
+                    deletePaths.push_back(this->filePathMap.value(filename));
                 }
             }
         }
     }
+    return deletePaths;
 }
 
-
-
-void MapDispel::GetMapInfo()
+/**
+ * @brief MapDispel::getMapInfo Sends a network request to FarSeer to determine the legitimacy of maps
+ */
+void MapDispel::getMapInfo()
 {
-
     std::ostringstream out;
     if (!this->mapHashes.empty())
     {
@@ -121,8 +154,7 @@ void MapDispel::GetMapInfo()
     multiPart->setParent(reply);
     QObject::connect(reply, &QNetworkReply::finished, [reply, this]() {
         if (reply->error() == QNetworkReply::NoError) {
-             auto resp = reply->readAll();
-            qDebug() << "Response received:" << resp ;
+            auto resp = reply->readAll();
             QString rawJsonString = QString::fromUtf8(resp);
             QString unescapedJsonString = rawJsonString.replace("\\\"", "");
 
@@ -152,19 +184,25 @@ void MapDispel::GetMapInfo()
                 }
                 ui->mapTable->setItem(i,1, mapRowItem);
             }
-
         } else {
+            QMessageBox::warning(nullptr, "Error", "Failed to process the network request. " + reply->errorString());
             qDebug() << "Error:" << reply->errorString();
         }
         reply->deleteLater();
     });
 }
 
-
-
+/**
+ * @brief MapDispel::on_pushButton_2_clicked Called when the delete button is pressed
+ * @
+ */
 void MapDispel::on_pushButton_2_clicked()
 {
-    qDebug() << "Checking for deleted selections";
-    checkSelectedCheckBoxes();
+    const auto deletedFilenames = getMapsForDeletion();
+    if (!deletedFilenames.size()) {
+        QMessageBox::warning(nullptr, "Warning", "No maps were selected for deletion.");
+        return;
+    }
+    deleteFiles(deletedFilenames);
+    populateTable();
 }
-

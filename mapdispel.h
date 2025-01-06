@@ -41,15 +41,15 @@ private slots:
 private:
     Ui::MapDispel *ui;
     QUrl baseAddress;
-    void RequestFinished(QNetworkReply *reply);
     QNetworkAccessManager* networkManager;
-    void GetMapInfo();
-    std::vector<std::string> GetMapInfoGet(std::vector<std::string>);
-    QString ComputeMD5(QString filePath);
+    void getMapInfo();
+    void computeMD5(QString filePath);
     std::vector<std::string> mapHashes;
     std::vector<QString> mapStatus;
-    void checkSelectedCheckBoxes();
-    void DeleteFile(const QString &fileName);
+    std::vector<QString> getMapsForDeletion();
+    void deleteFiles(const std::vector<QString> &fileNames);
     QMap<QString, QString> filePathMap;
+    QString mapDirectoryName;
+    void populateTable();
 };
 #endif // MAPDISPEL_H
