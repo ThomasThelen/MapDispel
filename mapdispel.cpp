@@ -10,6 +10,9 @@ MapDispel::MapDispel(QWidget *parent)
     ui->setupUi(this);
     this->baseAddress = QUrl("http://0.0.0.0:8080/maps/");
     this->networkManager = new QNetworkAccessManager();
+
+    //connect(this->ui->about_button, SIGNAL(triggered()), this, this->on_about_button_clicked());
+    connect(ui->aboutMenuButton, SIGNAL(triggered()), this, SLOT(on_aboutMenuButton_triggered()));
 }
 
 MapDispel::~MapDispel()
@@ -205,4 +208,20 @@ void MapDispel::on_pushButton_2_clicked()
     }
     deleteFiles(deletedFilenames);
     populateTable();
+}
+
+/**
+ * @brief on_actionAbout_clicked Called when the "About" button is clicked
+ */
+void MapDispel::on_aboutMenuButton_triggered() {
+    qDebug() << "asdfgh";
+    QMessageBox::about(nullptr, "About", "Warcraft III is over 20 years old.\n"
+                                         "Despite its age, custom map hacking remains a problem that the commnunity faces.\n"
+                                         "This software is a small step in addressing the problem by giving a way of means"
+                                         " to determine what maps are 'official'. The Hive and select discord servers are scraped"
+                                         " for maps from official creators. This program communicates with a server that contains "
+                                         " a weekly updated database of official maps and compares the files on your computer (only in the selected folder)"
+                                         " against them.\n"
+                                         "The only information sent to the server is the map checksums.\n"
+                                         "For the source code and bug reports, visit https://github.com/ThomasThelen/MapDispel");
 }

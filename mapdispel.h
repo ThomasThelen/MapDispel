@@ -32,11 +32,9 @@ public:
 
 private slots:
     void on_openMapDirectory_clicked();
-
     void on_pushButton_clicked();
-
-
     void on_pushButton_2_clicked();
+    void on_aboutMenuButton_triggered();
 
 private:
     Ui::MapDispel *ui;
